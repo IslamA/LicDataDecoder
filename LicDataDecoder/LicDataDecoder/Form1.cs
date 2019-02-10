@@ -11,10 +11,9 @@ namespace LicDataDecoder
 {
     public partial class Form1 : Form
     {
-        //Наличие необходимых компонентов в системе
-        bool JRE = false;
-        bool RING = false;
-        bool LICENSE = false;
+        //Версии необходимых компонентов в системе
+        string JRE = "";
+        string RING = "";       
 
         string path; //путь к файлу
         string fileName; //имя файла
@@ -25,8 +24,8 @@ namespace LicDataDecoder
             InitializeComponent();
 
             this.Width = 500;
-            button1.Enabled = true;
-            //checkAbilityAcync();
+
+            checkAbilityAcync();
         }
 
         private async void button1_Click(object sender, EventArgs e)
@@ -34,6 +33,8 @@ namespace LicDataDecoder
             if (openFileDialog1.ShowDialog() == DialogResult.Cancel) return;
             textBox1.Text = openFileDialog1.FileName;
             textBox2.Text = "Подождите...";
+            textBox3.Text = "Параметры компьютера, получившего лицензию. Не все из них являются ключевыми.";
+            textBox4.Text = "Здесь будет выведена информация о параметрах текущего компьютера";
 
             try
             {
@@ -54,6 +55,7 @@ namespace LicDataDecoder
             catch
             {
                 textBox2.Text = "Выбранный файл не является лицензией или поврежден.";
+                File.Delete(folderName + "\\" + fileName);
             }
         }
 
@@ -62,6 +64,14 @@ namespace LicDataDecoder
             path = textBox1.Text;
             fileName = path.Substring(path.LastIndexOf(@"\") + 1, path.Length - path.LastIndexOf('\\') - 1);
             folderName = path.Substring(0, path.Length - fileName.Length - 1);
+          
+            string tempFolder = System.IO.Path.GetTempPath() + "LicDataDecoder";            
+            Directory.CreateDirectory(tempFolder);
+            folderName = tempFolder;
+            File.Copy(path, tempFolder+"\\"+fileName, true);
+          
+            //У текущей версии Ring есть баг - если в папке с указанной лицензией находится сломанная лицензия, то она зачем-то выводит пытается просканировать и её.
+            //Во избежание этого реализовал копирование текущего файла лицензии во временный каталог с последующим удалением.
         }
 
         private string[] decodeLicenceFile()
@@ -104,9 +114,9 @@ namespace LicDataDecoder
                 string HWConfig = debugMessages[1].Substring(0, debugMessages[1].IndexOf("\r\n\r\n"));
                 results[2] = "Параметры этого компьютера, которые могли бы записаться в лицензию" + System.Environment.NewLine + System.Environment.NewLine + HWConfig;
 
-
-
             }
+
+            File.Delete(folderName + "\\" + fileName);
 
             return results;
 
@@ -131,7 +141,7 @@ namespace LicDataDecoder
             debugInfo = reader.ReadToEnd();
 
             return debugInfo;
-        }
+        } //получить полную конфигурацию компьютера
 
         private string getLicName()
         {
@@ -244,94 +254,109 @@ namespace LicDataDecoder
         private async void checkAbilityAcync()
         {
 
-            textBox2.Text += Environment.NewLine + Environment.NewLine + "Выполняется проверка возможности декодирования лицензий...";
+            bool READY = true;
 
-            JRE = await Task.Factory.StartNew<bool>(
+            textBox2.Text += Environment.NewLine + Environment.NewLine + "Выполняется проверка возможности декодирования лицензий..." + Environment.NewLine + Environment.NewLine;
+
+            JRE = await Task.Factory.StartNew<string>(
                                        () => checkJRE(),
                                        TaskCreationOptions.LongRunning);
 
-            RING = await Task.Factory.StartNew<bool>(
+            RING = await Task.Factory.StartNew<string>(
                                      () => checkRING(),
                                      TaskCreationOptions.LongRunning);
 
-            LICENSE = await Task.Factory.StartNew<bool>(
-                                      () => checkLICENSE(),
-                                      TaskCreationOptions.LongRunning);
+            switch (JRE)
+                {
+                    case "0":
+                        textBox2.Text += "В системе отсутствует JRE. Для работы необходима версия JRE не ниже 161. Скачать: https://www.oracle.com/technetwork/java/javase/downloads/index.html";
+                        READY &= false;
+                        break;
+                    case "error":
+                        textBox2.Text += "Неозможно определить версию JRE!";
+                        READY &= false;
+                        break;
+                    default:                     
+                        textBox2.Text += "Версия JRE: " + JRE;
+                        if (Int32.Parse(JRE.Substring(6, 3)) < 161)
+                        {
+                            textBox2.Text += Environment.NewLine + "Для работы необходима версия JRE не ниже 161. Скачать: https://www.oracle.com/technetwork/java/javase/downloads/index.html";
+                            READY &= false;
+                        }
+                        break;
+                }
 
-            if (!JRE) textBox2.Text += Environment.NewLine + Environment.NewLine + "В системе отсутствует JRE. \nСкачать: https://www.oracle.com/technetwork/java/javase/downloads/index.html";
-            if (!RING) textBox2.Text += Environment.NewLine + Environment.NewLine + "В системе отсутствует утилита RING. Утилита поставляется в комплекте с дистрибутивом технологической платформы в папке \"license-tools\". Запустите файл 1ce-installer.cmd с правами администратора для установки.";
-            if (!LICENSE) textBox2.Text += Environment.NewLine + Environment.NewLine + "В системе отсутствует модуль LICENSE. Модуль поставляется в комплекте с дистрибутивом технологической платформы в папке \"license-tools\". Запустите файл 1ce-installer.cmd с правами администратора  для установки.";
+            textBox2.Text += Environment.NewLine + Environment.NewLine;
 
-            if (JRE & RING & LICENSE)
+            switch (RING)
             {
-                textBox2.Text += Environment.NewLine + "Программа готова к работе!";
+                case "0":
+                    textBox2.Text += "В системе отсутствует RING. Для работы необходима версия RING не ниже 0.11.5-3. Утилита поставляется в комплекте с дистрибутивом технологической платформы 8.3.14.1565 в папке \"license-tools\". Запустите файл 1ce-installer.cmd с правами администратора для установки.";
+                    READY &= false;
+                    break;
+                case "error":
+                    textBox2.Text += "Неозможно определить версию RING!";
+                    READY &= false;
+                    break;
+                default:
+                    textBox2.Text += "Версия RING: " + RING;
+                    if (Int32.Parse(RING.Substring(5, 1)) < 5 & Int32.Parse(RING.Substring(2, 2)) < 12)
+                    {
+                        textBox2.Text += Environment.NewLine + "Для работы необходима версия RING не ниже 0.11.5-3. Утилита поставляется в комплекте с дистрибутивом технологической платформы 8.3.14.1565 в папке \"license-tools\". Удалите старые версии Ring и License и запустите файл 1ce-installer.cmd с правами администратора для установки.";
+                        READY &= false;
+                    }
+                    break;
+            }
+            
+            if (READY)
+            {
+                textBox2.Text += Environment.NewLine + Environment.NewLine + "Программа готова к работе!";
                 button1.Enabled = true;
             }
 
         }
 
-        private bool checkJRE()
-        {
-
-            try
-            {
-                Process process = new Process();
-                process.StartInfo.FileName = "java";
-                process.StartInfo.RedirectStandardError = true;
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.CreateNoWindow = true;
-                process.Start();
-                return true;
-
-                //StreamReader reader = process.StandardError;
-                //string output = reader.ReadToEnd();
-                //return output == "";
-
-                // java дублирует информацию из стандартного потока вывода в стандартный поток ошибок, поэтому он никогда не будет пустым.
-
-            }
-            catch (Exception e)
-            {
-                return false;
-            }
-
-        }
-
-        private bool checkRING()
+        private string checkJRE()
         {
 
             try
             {
                 Process process = new Process();
                 process.StartInfo.FileName = "cmd.exe";
-                process.StartInfo.Arguments = "/C ring";
+                process.StartInfo.Arguments = "/C java -version";
                 process.StartInfo.RedirectStandardError = true;
                 process.StartInfo.UseShellExecute = false;
                 process.StartInfo.CreateNoWindow = true;
                 process.Start();
-
+                
                 StreamReader reader = process.StandardError;
                 string output = reader.ReadToEnd();
+                if (!output.Contains("\"java\""))
+                {
+                    return output.Substring(output.IndexOf("\"") + 1, 9);
+                }
+                else return "0";
 
-                return output == "";
+                //Передаю огненный привет разработчикам java, которые посчитали хорошей идеей выводить информацию
+                //в стандартный поток ошибок вместо стандартного потока вывода
 
             }
             catch (Exception e)
             {
-                return false;
+                return "error";
             }
 
         }
 
-        private bool checkLICENSE()
+        private string checkRING()
         {
 
             try
             {
-                if (!RING) return false;
+                if (checkJRE()=="0") return "error";
                 Process process = new Process();
                 process.StartInfo.FileName = "cmd.exe";
-                process.StartInfo.Arguments = "/C ring license";
+                process.StartInfo.Arguments = "/C ring --version";
                 process.StartInfo.RedirectStandardOutput = true;
                 process.StartInfo.UseShellExecute = false;
                 process.StartInfo.CreateNoWindow = true;
@@ -339,15 +364,19 @@ namespace LicDataDecoder
 
                 StreamReader reader = process.StandardOutput;
                 string output = reader.ReadToEnd();
-
-                return (!output.Contains("ERROR"));
+                if (!output.Contains("\"ring\"") && output!="")
+                {
+                    return output.Replace("\r\n", "");
+                }
+                else return "0";
 
             }
             catch (Exception e)
             {
-                return false;
+                return "error";
             }
-        }
+
+        }       
 
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
         {
