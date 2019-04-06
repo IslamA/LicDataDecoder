@@ -26,6 +26,7 @@ namespace LicDataDecoder
             this.Width = 500;
 
             checkAbilityAcync();
+            //button1.Enabled = true;
         }
 
         private async void button1_Click(object sender, EventArgs e)
@@ -76,51 +77,88 @@ namespace LicDataDecoder
 
         private string[] decodeLicenceFile()
         {
-            string licName = getLicName();
-            string pinCode = licName.Substring(0, 15);
 
-            string[] results = new string[3];
+            string[] results = new string[3] {"", "", ""};
 
             string result = "";
+            string licName = "";
+            string pinCode = "";
 
-            result += getLicData(licName) + System.Environment.NewLine;
-            result += "--------------------------------------------------------------------------------------";
-            result += "Текущий пин-код: " + buildPinCode(pinCode);
-            result += "--------------------------------------------------------------------------------------";
-            result += System.Environment.NewLine + System.Environment.NewLine;
-            result += getValidateData(licName);
+            try
+            {               
+                licName = getLicName();
+                pinCode = licName.Substring(0, 15);
+            }
+            catch
+            {
+                results[0] = "Ошибка при определении внутреннего имени лицензии. Возможные причины:" + Environment.NewLine+ Environment.NewLine + "Файл лицензии поврежден" + Environment.NewLine + "Файл не является лицензией 1С" + Environment.NewLine + "В системе присутствуют остатки от предыдущих версий Ring и License" + Environment.NewLine + "Обновился формат лицензий и текущая версия LicenseTools его не поддерживает.";
+                File.Delete(folderName + "\\" + fileName);
+                return results;
+            }
 
-            results[0] = result;
+            try
+            {
+                result += getLicData(licName) + System.Environment.NewLine;
+                result += "--------------------------------------------------------------------------------------";
+                result += "Текущий пин-код: " + buildPinCode(pinCode);
+                result += "--------------------------------------------------------------------------------------";
+                result += System.Environment.NewLine + System.Environment.NewLine;
+            }
+            catch
+            {
+                results[0] = "Ошибка при извлечении ликдаты из лицензии.";
+                File.Delete(folderName + "\\" + fileName);
+                return results;
+            }
+
+            try
+            {
+                result += getValidateData(licName);
+                results[0] = result;
+            }
+            catch
+            {
+                results[0] = "Ошибка при сопоставлении ключевых параметров этого компьютера с параметрами из лицензии";
+                File.Delete(folderName + "\\" + fileName);
+                return results;
+            }
+
 
             //расширенный режим
-            if (ExternalMode.Checked)
+            try
             {
-
-                string debugInfo = getDebugInfo(licName);
-
-                string[] debugMessages = debugInfo.Split(new string[] { "[DEBUG ] com._1c.license.activator.crypt.Converter - getLicensePermitFromBase64 : Request : Computer info : \r\n" }, StringSplitOptions.RemoveEmptyEntries);
-
-                foreach (string message in debugMessages)
+                if (ExternalMode.Checked)
                 {
-                    if (message.Contains("pin : " + pinCode))
+                    string debugInfo = getDebugInfo(licName);
+
+                    string[] debugMessages = debugInfo.Split(new string[] { "[DEBUG ] com._1c.license.activator.crypt.Converter - getLicensePermitFromBase64 : Request : Computer info : \r\n" }, StringSplitOptions.RemoveEmptyEntries);
+
+                    foreach (string message in debugMessages)
                     {
-                        int end = message.IndexOf("Customer info :");
-                        string licHWConfig = message.Substring(0, end);
-                        results[1] = "Параметры компьютера, получившего лицензию. Не все из них являются ключевыми." + System.Environment.NewLine + System.Environment.NewLine + licHWConfig;
+                        if (message.Contains("pin : " + pinCode))
+                        {
+                            int end = message.IndexOf("Customer info :");
+                            string licHWConfig = message.Substring(0, end);
+                            results[1] = "Параметры компьютера, получившего лицензию. Не все из них являются ключевыми." + System.Environment.NewLine + System.Environment.NewLine + licHWConfig;
+                        }
                     }
+
+                    debugMessages = debugInfo.Split(new string[] { "[DEBUG ] com._1c.license.activator.hard.HardInfo - computer info : " }, StringSplitOptions.RemoveEmptyEntries);
+                    string HWConfig = debugMessages[1].Substring(0, debugMessages[1].IndexOf("\r\n\r\n"));
+                    results[2] = "Параметры этого компьютера, которые могли бы записаться в лицензию" + System.Environment.NewLine + System.Environment.NewLine + HWConfig;
+
                 }
-
-                debugMessages = debugInfo.Split(new string[] { "[DEBUG ] com._1c.license.activator.hard.HardInfo - computer info : " }, StringSplitOptions.RemoveEmptyEntries);
-                string HWConfig = debugMessages[1].Substring(0, debugMessages[1].IndexOf("\r\n\r\n"));
-                results[2] = "Параметры этого компьютера, которые могли бы записаться в лицензию" + System.Environment.NewLine + System.Environment.NewLine + HWConfig;
-
             }
+            catch
+            {
+                results[0] = "Ошибка при работе в расширенном режиме";
+                File.Delete(folderName + "\\" + fileName);
+                return results;
+            }                       
 
             File.Delete(folderName + "\\" + fileName);
 
             return results;
-
-
 
 
         } //фоновый метод декодирования файла лицензии
@@ -378,7 +416,7 @@ namespace LicDataDecoder
 
         }       
 
-        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        private void externalModeCheckBox_CheckedChanged(object sender, EventArgs e)
         {
             Rectangle r = Screen.FromControl(this).WorkingArea;
 
@@ -416,6 +454,18 @@ namespace LicDataDecoder
             //Rectangle r = Screen.FromControl(this).WorkingArea;
             //this.Bounds = new Rectangle((r.Width-this.Width)/2, (r.Height-this.Height)/2, this.Width, this.Height);
 
+        }
+
+        private void useStandartFolderCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (useStandartFolderCheckBox.Checked == true)
+            {
+                openFileDialog1.InitialDirectory = @"C:\ProgramData\1C\licenses";
+            }
+            else
+            {
+                openFileDialog1.InitialDirectory = "";
+            }
         }
     }
 }

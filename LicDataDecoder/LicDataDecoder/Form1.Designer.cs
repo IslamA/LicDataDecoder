@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.button1 = new System.Windows.Forms.Button();
@@ -38,13 +39,15 @@
             this.ExternalMode = new System.Windows.Forms.CheckBox();
             this.textBox3 = new System.Windows.Forms.TextBox();
             this.textBox4 = new System.Windows.Forms.TextBox();
+            this.useStandartFolderCheckBox = new System.Windows.Forms.CheckBox();
+            this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // textBox1
             // 
             this.textBox1.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.textBox1.Location = new System.Drawing.Point(12, 30);
+            this.textBox1.Location = new System.Drawing.Point(12, 29);
             this.textBox1.Name = "textBox1";
             this.textBox1.ReadOnly = true;
             this.textBox1.Size = new System.Drawing.Size(356, 23);
@@ -77,7 +80,6 @@
             // openFileDialog1
             // 
             this.openFileDialog1.Filter = "Файлы лицензий 1С (*.lic)|*.lic";
-            this.openFileDialog1.InitialDirectory = "C:\\ProgramData\\1C\\Licenses\\";
             // 
             // menuStrip1
             // 
@@ -106,8 +108,10 @@
             this.ExternalMode.Size = new System.Drawing.Size(121, 17);
             this.ExternalMode.TabIndex = 4;
             this.ExternalMode.Text = "Подробный режим";
+            this.toolTip1.SetToolTip(this.ExternalMode, "При установленной галке программа будет вытаскивать из лицензии полную \r\nинформац" +
+        "ию о железе компьютера, на котором она была активирована");
             this.ExternalMode.UseVisualStyleBackColor = true;
-            this.ExternalMode.CheckedChanged += new System.EventHandler(this.checkBox1_CheckedChanged);
+            this.ExternalMode.CheckedChanged += new System.EventHandler(this.externalModeCheckBox_CheckedChanged);
             // 
             // textBox3
             // 
@@ -134,11 +138,25 @@
             this.textBox4.TabIndex = 6;
             this.textBox4.Text = "Здесь будет выведена информация о параметрах текущего компьютера\r\n\r\n";
             // 
+            // useStandartFolderCheckBox
+            // 
+            this.useStandartFolderCheckBox.AutoSize = true;
+            this.useStandartFolderCheckBox.Location = new System.Drawing.Point(140, 7);
+            this.useStandartFolderCheckBox.Name = "useStandartFolderCheckBox";
+            this.useStandartFolderCheckBox.Size = new System.Drawing.Size(175, 17);
+            this.useStandartFolderCheckBox.TabIndex = 7;
+            this.useStandartFolderCheckBox.Text = "Стандартная папка лицензий";
+            this.toolTip1.SetToolTip(this.useStandartFolderCheckBox, "При установленной галке после нажатия на кнопку \"Выбор файла\"\r\nбудет открываться " +
+        "стандартная папка с лицензиями 1С. \r\nБез галки - последняя открытая папка.");
+            this.useStandartFolderCheckBox.UseVisualStyleBackColor = true;
+            this.useStandartFolderCheckBox.CheckedChanged += new System.EventHandler(this.useStandartFolderCheckBox_CheckedChanged);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1394, 706);
+            this.Controls.Add(this.useStandartFolderCheckBox);
             this.Controls.Add(this.textBox4);
             this.Controls.Add(this.textBox3);
             this.Controls.Add(this.ExternalMode);
@@ -151,7 +169,7 @@
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "LicData Decoder 1.4";
+            this.Text = "LicData Decoder 1.5";
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.ResumeLayout(false);
@@ -169,6 +187,8 @@
         private System.Windows.Forms.CheckBox ExternalMode;
         private System.Windows.Forms.TextBox textBox3;
         private System.Windows.Forms.TextBox textBox4;
+        private System.Windows.Forms.CheckBox useStandartFolderCheckBox;
+        private System.Windows.Forms.ToolTip toolTip1;
     }
 }
 
